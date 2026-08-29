@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}Add Medicine — MySmartMed{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Add Medicine</h1></div>
+
+<div class="card">
+    <form method="POST" class="stacked">
+
+        <label for="name">Medicine Name</label>
+
+        <div class="autocomplete-wrap">
+            <input
+                type="text"
+                id="name"
+                name="name"
+                autocomplete="off"
+                required
+            >
+            <div id="autocomplete-list" class="autocomplete-list"></div>
+        </div>
+
+
+        <div class="form-row">
+
+            <div>
+                <label for="dosage">Dosage</label>
+                <input
+                    type="text"
+                    id="dosage"
+                    name="dosage"
+                    placeholder="e.g. 500mg"
+                >
+            </div>
+
+            <div>
+                <label for="frequency">Frequency</label>
+                <input
+                    type="text"
+                    id="frequency"
+                    name="frequency"
+                    placeholder="e.g. Twice daily"
+                >
+            </div>
+
+            <div>
+                <label for="time_of_day">
+                    Medication Time(s)
+                </label>
+
+                <input
+                    type="text"
+                    id="time_of_day"
+                    name="time_of_day"
+                    placeholder="e.g. 08:00 or 08:00, 20:00"
+                    required
+                >
+
+                <small style="display:block; margin-top:5px; opacity:0.7;">
+                    Use 24-hour format. For multiple daily doses,
+                    separate times with commas.
+                </small>
+            </div>
+
+        </div>
+
+
+        <div class="form-row">
+
+            <div>
+                <label for="start_date">Start Date</label>
+                <input
+                    type="date"
+                    id="start_date"
+                    name="start_date"
+                >
+            </div>
+
+            <div>
+                <label for="end_date">End Date</label>
+                <input
+                    type="date"
+                    id="end_date"
+                    name="end_date"
+                >
+            </div>
+
+        </div>
+
+
+        <h3 class="section-title" style="margin-top:22px;">
+            Refill Tracking
+        </h3>
+
+        <div class="form-row">
+
+            <div>
+                <label for="total_qty">Total Quantity</label>
+                <input
+                    type="number"
+                    id="total_qty"
+                    name="total_qty"
+                    min="0"
+                    value="30"
+                >
+            </div>
+
+            <div>
+                <label for="threshold">
+                    Refill Alert Threshold
+                </label>
+
+                <input
+                    type="number"
+                    id="threshold"
+                    name="threshold"
+                    min="0"
+                    value="5"
+                >
+            </div>
+
+        </div>
+
+
+        <div class="btn-row">
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Save Medicine
+            </button>
+
+            <a
+                href="{{ url_for('patient_detail', patient_id=patient_id) }}"
+                class="btn btn-outline"
+            >
+                Cancel
+            </a>
+
+        </div>
+
+    </form>
+</div>
+
+
+<script>
+const input =
+    document.getElementById("name");
+
+const list =
+    document.getElementById("autocomplete-list");
+
+
+input.addEventListener(
+    "input",
+    async () => {
+
+        const q =
+            input.value.trim();
+
+        if (q.length < 2) {
+
+            list.style.display = "none";
+            list.innerHTML = "";
+
+            return;
+        }
+
+        try {
+
+            const res =
+                await fetch(
+                    `/api/medicine-autocomplete?q=${encodeURIComponent(q)}`
+                );
+
+            const items =
+                await res.json();
+
+            if (!items.length) {
+
+                list.style.display = "none";
+
+                return;
+            }
+
+            list.innerHTML =
+                items
+                    .map(
+                        medicine =>
+                            `<div>${medicine}</div>`
+                    )
+                    .join("");
+
+            list.style.display = "block";
+
+
+            Array.from(
+                list.children
+            ).forEach(
+                element => {
+
+                    element.addEventListener(
+                        "click",
+                        () => {
+
+                            input.value =
+                                element.textContent;
+
+                            list.style.display =
+                                "none";
+                        }
+                    );
+
+                }
+            );
+
+        } catch (error) {
+
+            list.style.display =
+                "none";
+        }
+
+    }
+);
+
+
+document.addEventListener(
+    "click",
+    event => {
+
+        if (event.target !== input) {
+            list.style.display = "none";
+        }
+
+    }
+);
+
+
+// Validate the medication time format before submission.
+// Accepted examples:
+//
+//     08:00
+//     08:00,20:00
+//     8:00 AM, 8:00 PM
+//
+document.querySelector("form").addEventListener(
+    "submit",
+    event => {
+
+        const value =
+            document
+                .getElementById("time_of_day")
+                .value
+                .trim();
+
+        if (!value) {
+
+            alert(
+                "Please enter at least one medication time."
+            );
+
+            event.preventDefault();
+
+            return;
+        }
+
+        const values =
+            value
+                .split(",")
+                .map(item => item.trim())
+                .filter(Boolean);
+
+        const valid =
+            values.every(
+                item => {
+
+                    return (
+                        /^([01]\d|2[0-3]):[0-5]\d$/.test(item) ||
+                        /^(0?[1-9]|1[0-2]):[0-5]\d\s?(AM|PM)$/i.test(item) ||
+                        /^(0?[1-9]|1[0-2])\s?(AM|PM)$/i.test(item)
+                    );
+                }
+            );
+
+        if (!valid) {
+
+            alert(
+                "Use medication times such as 08:00 or 08:00, 20:00."
+            );
+
+            event.preventDefault();
+        }
+
+    }
+);
+</script>
+
+{% endblock %}

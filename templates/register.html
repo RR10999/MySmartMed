@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Register — MySmartMed{% endblock %}
+{% block content %}
+<div class="auth-wrap">
+    <h1>💊 MySmartMed</h1>
+    <div class="card">
+        <h2>Create your caregiver account</h2>
+        <form method="POST" class="stacked">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required autofocus>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+            <p class="patient-meta">This password derives your AES-256 encryption key — it is
+                never stored, so if it's lost, encrypted records cannot be recovered.</p>
+
+            <label for="contact_number">Contact Number (optional)</label>
+            <input type="text" id="contact_number" name="contact_number">
+
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary">Register</button>
+            </div>
+        </form>
+    </div>
+    <p class="auth-switch">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+</div>
+{% endblock %}

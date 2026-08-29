@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — MySmartMed{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <a href="{{ url_for('add_patient') }}" class="btn btn-primary">+ Add Patient</a>
+</div>
+
+<div class="stat-strip">
+    <div class="stat-box">
+        <div class="num">{{ patients|length }}</div>
+        <div class="label">Patients under care</div>
+    </div>
+    <div class="stat-box">
+        <div class="num">{{ total_alerts }}</div>
+        <div class="label">Refill alerts</div>
+    </div>
+</div>
+
+<h2 class="section-title">Your Patients</h2>
+
+{% if patients %}
+<div class="patient-grid">
+    {% for p in patients %}
+    <a href="{{ url_for('patient_detail', patient_id=p.patient_id) }}" class="patient-card">
+        <h3>{{ p.name }}</h3>
+        <div class="patient-meta">{{ p.gender or "Gender not set" }}</div>
+        <div class="patient-meta">{{ p.medicine_count }} active medicine(s)</div>
+        {% if p.refill_alerts > 0 %}
+            <span class="badge badge-alert">{{ p.refill_alerts }} refill alert(s)</span>
+        {% else %}
+            <span class="badge badge-ok">Refills OK</span>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <p class="empty-state">No patients yet. Add your first patient to get started.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MySmartMed{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topbar">
+        <a href="{{ url_for('dashboard') }}" class="brand">💊 MySmartMed</a>
+        {% if session.get('username') %}
+        <nav class="topnav">
+            <span class="hello">Hi, {{ session['username'] }}</span>
+            <form method="POST" action="{{ url_for('logout') }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost">Log out</button>
+            </form>
+        </nav>
+        {% endif %}
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flashes">
+                {% for category, message in messages %}
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        Offline-first &middot; AES-256-GCM field-level encryption &middot; Local SQLite storage
+    </footer>
+
+    <script>
+      window.MYSMARTMED_CSRF_TOKEN = {{ csrf_token()|tojson }};
+      document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("form[method='POST']").forEach((form) => {
+          if (!form.querySelector("input[name='csrf_token']")) {
+            const token = document.createElement("input");
+            token.type = "hidden"; token.name = "csrf_token";
+            token.value = window.MYSMARTMED_CSRF_TOKEN; form.appendChild(token);
+          }
+        });
+      });
+    </script>
+
+    {% if session.get('username') %}
+    <!-- =========================================================
+         MySmartMed Local Medication Notification UI
+         ========================================================= -->
+
+    <div id="medication-notification-container"
+         aria-live="polite"
+         aria-atomic="false"
+         style="
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: min(380px, calc(100vw - 40px));
+            z-index: 9999;
+         ">
+    </div>
+
+    <script>
+    (() => {
+        const POLL_INTERVAL_MS = 2000;
+
+        let notificationPermissionRequested = false;
+
+        async function checkMedicationNotifications() {
+            try {
+                const response = await fetch(
+                    "{{ url_for('notifications_api') }}",
+                    {
+                        method: "GET",
+                        credentials: "same-origin",
+                        cache: "no-store",
+                        headers: {
+                            "Accept": "application/json"
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const notifications = await response.json();
+
+                if (!Array.isArray(notifications)) {
+                    return;
+                }
+
+                notifications.forEach(showMedicationNotification);
+
+            } catch (error) {
+                // The application is local/offline. A temporary polling
+                // failure must never break the rest of the UI.
+                console.debug(
+                    "MySmartMed notification polling:",
+                    error
+                );
+            }
+        }
+
+
+        function showMedicationNotification(notification) {
+            const container =
+                document.getElementById(
+                    "medication-notification-container"
+                );
+
+            if (!container) {
+                return;
+            }
+
+            // Avoid showing the same notification twice in the browser.
+            const browserKey =
+                `${notification.medicine_id}|` +
+                `${notification.scheduled_time}|` +
+                `${notification.stage}`;
+
+            if (document.querySelector(
+                `[data-notification-key="${CSS.escape(browserKey)}"]`
+            )) {
+                return;
+            }
+
+            const card = document.createElement("div");
+
+            card.dataset.notificationKey = browserKey;
+
+            card.style.cssText = `
+                background: #ffffff;
+                border: 1px solid #d5d9df;
+                border-radius: 12px;
+                padding: 18px;
+                margin-bottom: 12px;
+                box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+                font-family: Arial, sans-serif;
+            `;
+
+            const title = document.createElement("div");
+
+            title.style.cssText = `
+                font-size: 18px;
+                font-weight: 700;
+                margin-bottom: 8px;
+            `;
+
+            title.textContent =
+                notification.stage === "FIRST"
+                    ? "Medication Reminder"
+                    : "Second Medication Reminder";
+
+
+            const medicine = document.createElement("div");
+
+            medicine.style.cssText = `
+                font-size: 16px;
+                font-weight: 600;
+                margin-bottom: 6px;
+            `;
+
+            medicine.textContent =
+                notification.medicine_name || "Medication";
+
+
+            const message = document.createElement("div");
+
+            message.style.cssText = `
+                margin-bottom: 14px;
+                line-height: 1.45;
+            `;
+
+            message.textContent =
+                notification.message;
+
+
+            const scheduled = document.createElement("div");
+
+            scheduled.style.cssText = `
+                font-size: 12px;
+                opacity: 0.7;
+                margin-bottom: 14px;
+            `;
+
+            scheduled.textContent =
+                `Scheduled: ${notification.scheduled_time}`;
+
+
+            const buttonRow = document.createElement("div");
+
+            buttonRow.style.cssText = `
+                display: flex;
+                gap: 8px;
+            `;
+
+
+            const takenButton =
+                document.createElement("button");
+
+            takenButton.type = "button";
+            takenButton.textContent = "TAKEN";
+
+            takenButton.style.cssText = `
+                padding: 9px 14px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 700;
+            `;
+
+
+            const missedButton =
+                document.createElement("button");
+
+            missedButton.type = "button";
+            missedButton.textContent = "MISSED";
+
+            missedButton.style.cssText = `
+                padding: 9px 14px;
+                border: none;
+                border-radius: 6px;
+                cursor: pointer;
+                font-weight: 700;
+            `;
+
+
+            takenButton.onclick = async function() {
+                takenButton.disabled = true;
+                missedButton.disabled = true;
+
+                const success = await recordDose(
+                    notification.medicine_id,
+                    "TAKEN",
+                    notification.scheduled_time
+                );
+
+                if (success) {
+                    card.remove();
+                } else {
+                    takenButton.disabled = false;
+                    missedButton.disabled = false;
+                }
+            };
+
+
+            missedButton.onclick = async function() {
+                takenButton.disabled = true;
+                missedButton.disabled = true;
+
+                const success = await recordDose(
+                    notification.medicine_id,
+                    "MISSED",
+                    notification.scheduled_time
+                );
+
+                if (success) {
+                    card.remove();
+                } else {
+                    takenButton.disabled = false;
+                    missedButton.disabled = false;
+                }
+            };
+
+
+            buttonRow.appendChild(takenButton);
+            buttonRow.appendChild(missedButton);
+
+            card.appendChild(title);
+            card.appendChild(medicine);
+            card.appendChild(message);
+            card.appendChild(scheduled);
+            card.appendChild(buttonRow);
+
+            container.appendChild(card);
+
+
+            // Browser-level notification. The in-page card remains the
+            // primary notification mechanism for the prototype.
+            if (
+                "Notification" in window &&
+                Notification.permission === "granted"
+            ) {
+                try {
+                    new Notification(
+                        title.textContent,
+                        {
+                            body:
+                                `${notification.medicine_name}: ` +
+                                "please confirm the dose."
+                        }
+                    );
+                } catch (error) {
+                    console.debug(
+                        "Browser notification unavailable:",
+                        error
+                    );
+                }
+            }
+        }
+
+
+        async function recordDose(
+            medicineId,
+            status,
+            scheduledTime
+        ) {
+            try {
+                const formData = new FormData();
+
+                formData.append("status", status);
+                formData.append(
+                    "scheduled_time",
+                    scheduledTime
+                );
+
+                const response = await fetch(
+                    `/medicines/${medicineId}/log`,
+                    {
+                        method: "POST",
+                        body: formData,
+                        credentials: "same-origin",
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest",
+                            "Accept": "application/json",
+                            "X-CSRF-Token": window.MYSMARTMED_CSRF_TOKEN
+                        }
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok || !data.ok) {
+                    alert(
+                        data.error ||
+                        "Unable to record the medication status."
+                    );
+
+                    return false;
+                }
+
+                return true;
+
+            } catch (error) {
+
+                alert(
+                    "Unable to connect to the local MySmartMed server."
+                );
+
+                return false;
+            }
+        }
+
+
+        async function requestNotificationPermission() {
+
+            if (
+                notificationPermissionRequested ||
+                !("Notification" in window)
+            ) {
+                return;
+            }
+
+            notificationPermissionRequested = true;
+
+            if (Notification.permission === "default") {
+                try {
+                    await Notification.requestPermission();
+                } catch (error) {
+                    console.debug(
+                        "Notification permission request failed:",
+                        error
+                    );
+                }
+            }
+        }
+
+
+        // Browser notification permission is optional. The application
+        // still works using the in-page notification card if permission
+        // is denied.
+        requestNotificationPermission();
+
+        // Poll the local Flask notification endpoint.
+        setInterval(
+            checkMedicationNotifications,
+            POLL_INTERVAL_MS
+        );
+
+        // Check immediately after page load.
+        checkMedicationNotifications();
+
+    })();
+    </script>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.name }} — MySmartMed{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{{ patient.name }}</h1>
+    <div class="btn-row" style="margin-top:0;">
+        <a href="{{ url_for('weekly_report', patient_id=patient.patient_id) }}" class="btn btn-outline">📄 Weekly Report</a>
+        <a href="{{ url_for('visit_summary_report', patient_id=patient.patient_id) }}" class="btn btn-outline">📄 Visit Summary</a>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Patient Details</h3>
+    <table class="data-table">
+        <tr><th>Date of Birth</th><td>{{ patient.dob or "—" }}</td></tr>
+        <tr><th>Gender</th><td>{{ patient.gender or "—" }}</td></tr>
+        <tr><th>Contact Number</th><td>{{ patient.contact_number or "—" }}</td></tr>
+        <tr><th>Family Email</th><td>{{ patient.family_email or "—" }}</td></tr>
+    </table>
+</div>
+
+<div class="page-header">
+    <h2 class="section-title" style="margin:0;">Medicines</h2>
+    <a href="{{ url_for('add_medicine', patient_id=patient.patient_id) }}" class="btn btn-primary btn-sm">+ Add Medicine</a>
+</div>
+
+{% if medicines %}
+<div class="card">
+    <table class="data-table">
+        <tr>
+            <th>Name</th><th>Dosage</th><th>Frequency</th><th>Time</th>
+            <th>Refill Status</th><th>Log Dose</th>
+        </tr>
+        {% for m in medicines %}
+        <tr>
+            <td>{{ m.name }}</td>
+            <td>{{ m.dosage or "—" }}</td>
+            <td>{{ m.frequency or "—" }}</td>
+            <td>{{ m.time_of_day or "—" }}</td>
+            <td>
+                {% if m.refill %}
+                    {{ m.refill.remaining_qty }} left (threshold {{ m.refill.threshold }})
+                    {% if m.refill.alert %}
+                        <br><span class="badge badge-alert">Refill needed</span>
+                        <form method="POST" action="{{ url_for('refill_medicine', medicine_id=m.medicine_id) }}" style="display:inline; margin-top:4px;">
+                            <input type="hidden" name="add_qty" value="30">
+                            <button type="submit" class="btn btn-sm btn-secondary">Refill +30</button>
+                        </form>
+                    {% else %}
+                        <br><span class="badge badge-ok">OK</span>
+                    {% endif %}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>
+                <div class="med-row-actions">
+                    <form method="POST" action="{{ url_for('log_dose', medicine_id=m.medicine_id) }}">
+                        <input type="hidden" name="status" value="TAKEN">
+                        <button type="submit" class="btn btn-sm btn-taken">Taken</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('log_dose', medicine_id=m.medicine_id) }}">
+                        <input type="hidden" name="status" value="MISSED">
+                        <button type="submit" class="btn btn-sm btn-missed">Missed</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% else %}
+<div class="card"><p class="empty-state">No medicines added yet.</p></div>
+{% endif %}
+
+<div class="page-header">
+    <h2 class="section-title" style="margin:0;">Doctor Visits</h2>
+    <a href="{{ url_for('add_visit', patient_id=patient.patient_id) }}" class="btn btn-primary btn-sm">+ Record Visit</a>
+</div>
+
+{% if visits %}
+<div class="card">
+    <table class="data-table">
+        <tr><th>Doctor</th><th>Visit Date</th><th>Next Visit</th><th>Notes</th></tr>
+        {% for v in visits %}
+        <tr>
+            <td>{{ v.doctor_name }}{% if v.hospital %} ({{ v.hospital }}){% endif %}</td>
+            <td>{{ v.visit_date or "—" }}</td>
+            <td>{{ v.next_visit_date or "—" }}</td>
+            <td>{{ v.notes or "—" }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% else %}
+<div class="card"><p class="empty-state">No visits recorded yet.</p></div>
+{% endif %}
+
+<div class="card" style="margin-top:10px;">
+    <a href="{{ url_for('add_doctor', patient_id=patient.patient_id) }}" class="btn btn-outline btn-sm">+ Add a new Doctor</a>
+</div>
+{% endblock %}

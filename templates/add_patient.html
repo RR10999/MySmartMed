@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Add Patient — MySmartMed{% endblock %}
+{% block content %}
+<div class="page-header"><h1>Add Patient</h1></div>
+<div class="card">
+    <form method="POST" class="stacked">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" name="name" required>
+
+        <div class="form-row">
+            <div>
+                <label for="dob">Date of Birth</label>
+                <input type="date" id="dob" name="dob">
+            </div>
+            <div>
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender">
+                    <option value="">Select...</option>
+                    <option value="Female">Female</option>
+                    <option value="Male">Male</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label for="contact_number">Contact Number</label>
+                <input type="text" id="contact_number" name="contact_number">
+            </div>
+            <div>
+                <label for="family_email">Family Email (for reports)</label>
+                <input type="email" id="family_email" name="family_email">
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button type="submit" class="btn btn-primary">Save Patient</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
